@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from enum import Enum
 
-Base = declarative_base()
+from app.database import Base
 
 class ReservationStatus(Enum):
     PENDING = 'pending'
@@ -42,12 +42,3 @@ class NotificationLog(Base):
     time_sent = Column(DateTime, default=datetime.utcnow)
     type = Column(String)
     status = Column(String)
-    
-    
-engine = create_engine("mysql+pymysql://username:password@localhost:3306/reservationDB.db", echo=True)
-
-Base.metadata.create_all(bind=engine)
-
-Session = sessionmaker(bind=engine)
-session = Session()
-
