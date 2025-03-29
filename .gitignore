@@ -1,0 +1,13 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.env/
+
+# Local dev DB (optional)
+*.db
+
+# OS
+.DS_Store
