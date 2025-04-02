@@ -3,7 +3,8 @@ from typing import Optional
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict
 from app.database import SessionLocal
-from sqlmodel import Session
+from sqlalchemy.orm import Session
+
 
 from app.models import Reservation
 
@@ -29,12 +30,18 @@ def get_db():
 
 @app.post("/reservations")
 async def create_reservation(reservation: ReservationCreate, db: Session = Depends(get_db)):
-  # Create a Reservation SQLAlchemy object
+  # Convert Pydantic model to dictionary
   data = reservation.model_dump()
+  # Create a new SQLAlchemy model instance with the data
   db_model = Reservation(**data)
-  
+  # Now user reservation data can be added to db session
   db.add(db_model)
   db.commit()
   db.refresh(db_model)
   
   return db_model
+
+@app.get("/reservations")
+async def get_reservations(db: Session = Depends(get_db)) -> list[ReservationCreate]:
+    reservations = db.query(Reservation).all()
+    return reservations
