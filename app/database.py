@@ -10,7 +10,7 @@ load_dotenv()
 # read DB URL from .env file
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# set up the engine (sqlLite for now)
+# set up the engine (sqlite for now)
 engine = create_engine(DATABASE_URL,
     connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}                   
 )
