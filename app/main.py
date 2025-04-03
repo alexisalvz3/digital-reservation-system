@@ -19,6 +19,15 @@ class ReservationCreate(BaseModel):
     date_time: datetime
     
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+class ReservationOut(BaseModel):
+    name: str
+    phone: str
+    table_size: int
+    date_time: datetime
+    
+    model_config = ConfigDict(arbitrary_types_allowed=True,
+                              from_attributes=True)
 
 # function for dependency-based db session, this way we dont need to call our session manually    
 def get_db():
@@ -28,7 +37,7 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/reservations")
+@app.post("/reservations", response_model=ReservationOut)
 async def create_reservation(reservation: ReservationCreate, db: Session = Depends(get_db)):
   # Convert Pydantic model to dictionary
   data = reservation.model_dump()
@@ -41,7 +50,7 @@ async def create_reservation(reservation: ReservationCreate, db: Session = Depen
   
   return db_model
 
-@app.get("/reservations")
-async def get_reservations(db: Session = Depends(get_db)) -> list[ReservationCreate]:
+@app.get("/reservations", response_model=list[ReservationOut])
+async def get_reservations(db: Session = Depends(get_db)):
     reservations = db.query(Reservation).all()
     return reservations
