@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import StatusUpdate, app
 from app.database import SessionLocal
 from app.models import Reservation
 
@@ -59,3 +59,20 @@ def test_delete_reservation():
     delete_response = client.delete(f"/reservations/{reservation_id}")
     assert delete_response.status_code == 200
     assert delete_response.json() == {"message": "Reservation deleted."}
+
+def test_update_reservation_status():
+    session = SessionLocal()
+    res_id = 3
+    # In this test we will test that our reservation status has been changed from 
+    # PENDING to CANCELLED.
+    # this function receives a reservation ID and a new Status. all we need to do is 
+    # test or ASSERT that our reservation status has been updated to CANCELLED.
+    response = client.put(f"/reservations/{res_id}/status", json = {
+            "status": "confirmed"
+        })
+    assert response.status_code == 200
+    assert response.json() == {"message": "Reservation has been confirmed"}
+    res = session.query(Reservation).filter(Reservation.id == res_id).first()
+    assert res.status.value == "confirmed"
+    print(res.status)
+    session.close()

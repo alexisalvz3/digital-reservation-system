@@ -7,7 +7,7 @@ from app.database import SessionLocal
 from sqlalchemy.orm import Session
 
 
-from app.models import Reservation
+from app.models import Reservation, ReservationStatus
 
 app = FastAPI()
 
@@ -29,6 +29,9 @@ class ReservationOut(BaseModel):
     
     model_config = ConfigDict(arbitrary_types_allowed=True,
                               from_attributes=True)
+    
+class StatusUpdate(BaseModel):
+    status: ReservationStatus
 
 # function for dependency-based db session, this way we dont need to call our session manually    
 def get_db():
@@ -71,4 +74,17 @@ async def delete_reservation(reservation_id: int, db: Session = Depends(get_db))
     db.commit()
     
     return JSONResponse(content={"message": "Reservation deleted."})
+
+@app.put("/reservations/{item_id}/status")
+async def update_reservation_status(item_id: int, status: StatusUpdate, db: Session = Depends(get_db)):
+    try:
+        # query the reservation with 'id' equal to {item_id}.
+        reservation = db.query(Reservation).filter(Reservation.id == item_id).first()
+        if not reservation:
+            raise HTTPException(status_code=404, detail="Reservation not found.")
+        reservation.status = status.status
+        db.commit()
+        return JSONResponse(content={"message": f"Reservation has been {status.status.value}"})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")  
    
