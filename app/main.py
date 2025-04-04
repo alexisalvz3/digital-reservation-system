@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, status , HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from app.database import SessionLocal
 from sqlalchemy.orm import Session
@@ -39,18 +40,35 @@ def get_db():
 
 @app.post("/reservations", response_model=ReservationOut)
 async def create_reservation(reservation: ReservationCreate, db: Session = Depends(get_db)):
-  # Convert Pydantic model to dictionary
-  data = reservation.model_dump()
-  # Create a new SQLAlchemy model instance with the data
-  db_model = Reservation(**data)
-  # Now user reservation data can be added to db session
-  db.add(db_model)
-  db.commit()
-  db.refresh(db_model)
-  
-  return db_model
+    try:
+        # Convert Pydantic model to dictionary
+        data = reservation.model_dump()
+        # Create a new SQLAlchemy model instance with the data
+        db_model = Reservation(**data)
+        # Now user reservation data can be added to db session
+        db.add(db_model)
+        db.commit()
+        db.refresh(db_model)
+        
+        return db_model
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}") 
 
-@app.get("/reservations", response_model=list[ReservationOut])
+@app.get("/reservations", response_model=list[ReservationOut], status_code=status.HTTP_200_OK)
 async def get_reservations(db: Session = Depends(get_db)):
-    reservations = db.query(Reservation).all()
-    return reservations
+    try:
+        reservations = db.query(Reservation).all()
+        return reservations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
+@app.delete("/reservations/{reservation_id}", status_code=status.HTTP_200_OK)
+async def delete_reservation(reservation_id: int, db: Session = Depends(get_db)):
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found.")
+    db.delete(reservation)
+    db.commit()
+    
+    return JSONResponse(content={"message": "Reservation deleted."})
+   
