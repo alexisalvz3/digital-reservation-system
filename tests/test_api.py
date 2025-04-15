@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-
+import base64
 from app.main import StatusUpdate, app
 from app.database import SessionLocal
 from app.models import Reservation
@@ -7,7 +7,17 @@ from app.models import Reservation
 client = TestClient(app)
 
 def test_get_reservations():
-    response = client.get('/reservations')
+    # include basic auth for header
+    # Encode Basic Auth credentials
+    username = "admin"
+    password = "1234qwer"
+    credentials = f"{username}:{password}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+    headers = {
+        "Authorization": f"Basic {encoded_credentials}"
+    }
+    response = client.get('/reservations', headers=headers)
     assert response.status_code == 200
     assert response.json() == [
         {
@@ -46,19 +56,30 @@ def test_create_reservation():
         "date_time": "2025-04-04T00:47:36.390000"
     }
     
-def test_delete_reservation():
-    # creating database session to query reservation to delete
+def test_delete_with_auth():
+    # Create DB session and get the reservation to delete
     session = SessionLocal()
     res = session.query(Reservation).filter_by(name="Winston Churchill").first()
     session.close()
-    # make sure the reservation we want to delete exists
+
     assert res is not None
     reservation_id = res.id
-    
-    # now delete the reservation
-    delete_response = client.delete(f"/reservations/{reservation_id}")
-    assert delete_response.status_code == 200
-    assert delete_response.json() == {"message": "Reservation deleted."}
+
+    # Encode Basic Auth credentials
+    username = "admin"
+    password = "1234qwer"
+    credentials = f"{username}:{password}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+    headers = {
+        "Authorization": f"Basic {encoded_credentials}"
+    }
+
+    # Send DELETE request with auth headers
+    response = client.delete(f"/reservations/{reservation_id}", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "Reservation deleted."}
 
 def test_update_reservation_status():
     session = SessionLocal()
@@ -67,7 +88,17 @@ def test_update_reservation_status():
     # PENDING to CANCELLED.
     # this function receives a reservation ID and a new Status. all we need to do is 
     # test or ASSERT that our reservation status has been updated to CANCELLED.
-    response = client.put(f"/reservations/{res_id}/status", json = {
+    # Encode Basic Auth credentials
+    username = "admin"
+    password = "1234qwer"
+    credentials = f"{username}:{password}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+    headers = {
+        "Authorization": f"Basic {encoded_credentials}"
+    }    
+
+    response = client.put(f"/reservations/{res_id}/status", headers=headers, json = {
             "status": "confirmed"
         })
     assert response.status_code == 200
@@ -76,3 +107,11 @@ def test_update_reservation_status():
     assert res.status.value == "confirmed"
     print(res.status)
     session.close()
+    
+def test_delete_without_auth():
+    # calling test reservation id to delete
+    res_id = 5
+    # attempt to delete the reservation
+    delete_response = client.delete(f"/reservations/{res_id}")
+    assert delete_response.status_code == 401
+    
