@@ -96,7 +96,7 @@ def test_update_reservation_status():
 
     headers = {
         "Authorization": f"Basic {encoded_credentials}"
-    }    
+    }
 
     response = client.put(f"/reservations/{res_id}/status", headers=headers, json = {
             "status": "confirmed"
@@ -114,4 +114,15 @@ def test_delete_without_auth():
     # attempt to delete the reservation
     delete_response = client.delete(f"/reservations/{res_id}")
     assert delete_response.status_code == 401
+    
+def test_get_notifications():
+    username = "admin"
+    password = "1234qwer"
+    credentials = f"{username}:{password}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+    headers = {
+        "Authorization": f"Basic {encoded_credentials}"
+    }
+    response = client.get("/notifications", headers=headers)
+    assert response.status_code == 200
     

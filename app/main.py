@@ -1,17 +1,24 @@
 from datetime import datetime
+import os
 import secrets
 from typing import Annotated, Optional
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, status , HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import insert
 from app.database import SessionLocal
 from sqlalchemy.orm import Session
 
 
-from app.models import Reservation, ReservationStatus
+from app.models import NotificationLog, NotificationStatus, Reservation, ReservationStatus
 
 app = FastAPI()
+load_dotenv()
+
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 #initializing HTTPBasic for admin auth
 security = HTTPBasic()
@@ -43,6 +50,18 @@ class ReservationOut(BaseModel):
 class StatusUpdate(BaseModel):
     status: ReservationStatus
 
+class NotificationLogOut(BaseModel):
+    id: int
+    recipient_email: str
+    recipient_phone: str
+    message: str
+    time_sent: datetime
+    type: str
+    status: NotificationStatus
+    
+    model_config = ConfigDict(arbitrary_types_allowed=True,
+                              from_attributes=True)
+
 # function for dependency-based db session, this way we dont need to call our session manually    
 def get_db():
     db = SessionLocal()
@@ -56,12 +75,12 @@ def check_admin_credentials(credentials: Annotated[HTTPBasicCredentials, Depends
     # convert username and password to to bytes encoding them with UTF-8 
     # This is done in order to use secrets.compare_digest()
     current_username_bytes = credentials.username.encode('utf8')
-    correct_username_bytes = b"admin"
+    correct_username_bytes = ADMIN_USERNAME.encode("utf8")
     # using .compare_digest() to prevent 'timing attacks'
     is_correct_username = secrets.compare_digest(current_username_bytes, correct_username_bytes)
     # do the same for password
     current_password_bytes = credentials.password.encode('utf8')
-    correct_password_bytes = b"1234qwer"
+    correct_password_bytes = ADMIN_PASSWORD.encode("utf8")
     # perform compare_digest check
     is_correct_password = secrets.compare_digest(current_password_bytes, correct_password_bytes)
     # check status of username and password validation and return value
@@ -117,7 +136,23 @@ async def update_reservation_status(item_id: int, status: StatusUpdate, credenti
             raise HTTPException(status_code=404, detail="Reservation not found.")
         reservation.status = status.status
         db.commit()
-        return JSONResponse(content={"message": f"Reservation has been {status.status.value}"})
+        type = status.status.value
+        status_log = NotificationLog(recipient_phone = reservation.phone,
+                                     recipient_email = reservation.email,
+                                     message = f"Reservation has been {type}",
+                                     type = f"reservation_{type}",
+                                     status = NotificationStatus.SENT.value)
+        db.add(status_log)
+        db.commit()
+        return JSONResponse(content={"message": f"Reservation has been {type}"})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")  
+    
+@app.get("/notifications", response_model=list[NotificationLogOut], status_code=status.HTTP_200_OK)
+def get_notifications(credentials: HTTPBasicCredentials = Depends(check_admin_credentials), db: Session = Depends(get_db)):
+    try:
+        notification_logs = db.query(NotificationLog).all()
+        return notification_logs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
    
