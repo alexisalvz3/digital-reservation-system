@@ -10,6 +10,11 @@ class ReservationStatus(Enum):
     PENDING = 'pending'
     CONFIRMED = 'confirmed'
     CANCELLED = 'cancelled'
+    
+class NotificationStatus(str, Enum):
+    QUEUED = "queued"
+    SENT = "sent"
+    FAILED = "failed"
 
 class Reservation(Base):
     __tablename__ = "reservations"
@@ -37,8 +42,9 @@ class NotificationLog(Base):
     __tablename__ = "notification_logs"
 
     id = Column(Integer, primary_key=True)
+    recipient_phone = Column(String, nullable=False)
     recipient_email = Column(String, nullable=False)
     message = Column(String, nullable=False)
     time_sent = Column(DateTime, default=datetime.utcnow)
     type = Column(String)
-    status = Column(String)
+    status = Column(SAEnum(NotificationStatus))
