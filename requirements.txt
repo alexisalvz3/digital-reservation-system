@@ -7,3 +7,6 @@ pytest
 pymysql
 sqlmodel
 httpx
+boto3
+twilio
+os

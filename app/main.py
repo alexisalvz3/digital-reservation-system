@@ -10,15 +10,18 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import insert
 from app.database import SessionLocal
 from sqlalchemy.orm import Session
+from app.auth_utils import get_secret
 
 
 from app.models import NotificationLog, NotificationStatus, Reservation, ReservationStatus
+from app.sns import send_sms
 
 app = FastAPI()
+admin_credentials = get_secret()
 load_dotenv()
 
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+#ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
+#ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 #initializing HTTPBasic for admin auth
 security = HTTPBasic()
@@ -52,6 +55,7 @@ class StatusUpdate(BaseModel):
 
 class NotificationLogOut(BaseModel):
     id: int
+    name: str
     recipient_email: str
     recipient_phone: str
     message: str
@@ -75,12 +79,12 @@ def check_admin_credentials(credentials: Annotated[HTTPBasicCredentials, Depends
     # convert username and password to to bytes encoding them with UTF-8 
     # This is done in order to use secrets.compare_digest()
     current_username_bytes = credentials.username.encode('utf8')
-    correct_username_bytes = ADMIN_USERNAME.encode("utf8")
+    correct_username_bytes = admin_credentials["admin_username"].encode("utf8")
     # using .compare_digest() to prevent 'timing attacks'
     is_correct_username = secrets.compare_digest(current_username_bytes, correct_username_bytes)
     # do the same for password
     current_password_bytes = credentials.password.encode('utf8')
-    correct_password_bytes = ADMIN_PASSWORD.encode("utf8")
+    correct_password_bytes = admin_credentials["admin_password"].encode("utf8")
     # perform compare_digest check
     is_correct_password = secrets.compare_digest(current_password_bytes, correct_password_bytes)
     # check status of username and password validation and return value
@@ -137,13 +141,19 @@ async def update_reservation_status(item_id: int, status: StatusUpdate, credenti
         reservation.status = status.status
         db.commit()
         type = status.status.value
-        status_log = NotificationLog(recipient_phone = reservation.phone,
+        status_log = NotificationLog(name = reservation.name,
+                                     recipient_phone = reservation.phone,
                                      recipient_email = reservation.email,
                                      message = f"Reservation has been {type}",
                                      type = f"reservation_{type}",
                                      status = NotificationStatus.SENT.value)
         db.add(status_log)
         db.commit()
+        # grabbing twilio credentials to send sms via api
+        account_sid = admin_credentials["TWILIO_ACCOUNT_SID"]
+        auth_token = admin_credentials["TWILIO_AUTH_TOKEN"]
+        # call sms twilio function to send sms text on reservation update
+        send_sms(status_log.message, account_sid, auth_token)
         return JSONResponse(content={"message": f"Reservation has been {type}"})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")  

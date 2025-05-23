@@ -42,6 +42,7 @@ class NotificationLog(Base):
     __tablename__ = "notification_logs"
 
     id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
     recipient_phone = Column(String, nullable=False)
     recipient_email = Column(String, nullable=False)
     message = Column(String, nullable=False)
