@@ -4,9 +4,9 @@ sqlalchemy
 pydantic
 python-dotenv
 pytest
+pytest-mock
 pymysql
 sqlmodel
 httpx
 boto3
 twilio
-os

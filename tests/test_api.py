@@ -1,5 +1,8 @@
 from fastapi.testclient import TestClient
 import base64
+from app.sns import send_sms
+from pytest_mock import mocker
+from unittest.mock import patch
 from app.main import StatusUpdate, app
 from app.database import SessionLocal
 from app.models import Reservation
@@ -125,4 +128,52 @@ def test_get_notifications():
     }
     response = client.get("/notifications", headers=headers)
     assert response.status_code == 200
+    
+
+'''
+Test that verifies:
+    1. this app attempts to send an SMS via twilio when an admin updates a reservation's
+    status to "confirmed" or "cancelled"
+    2. the notification is logged in the NotificationLog table even if SMS fails or is
+    mocked.
+
+We're NOT sending real SMS messages in this test, so we'll use a mock to simulate the 
+behavior.
+'''
+
+# in this patch we are intercepting CONSTRUCTION of that Client to fake out its 
+# messages.create method
+@patch('app.sns.Client')
+def test_sms_on_status_update(mock_client_class):
+    # mock_client_class is the fake Client *class*
+    mock_client = mock_client_class.return_value
+    # now mock the instance's message.create()
+    expected_sid = 'SMFAKEID123'
+    mock_client.messages.create.return_value.sid = expected_sid
+    
+    #build basic-auth header
+    username = "admin"
+    password = "1234qwer"
+    credentials = f"{username}:{password}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+    headers = {
+        "Authorization": f"Basic {encoded_credentials}"
+    }
+
+    # query and assert reservation to test update exists
+    session = SessionLocal()
+    reservation = session.query(Reservation).filter_by(name="kambala").first()
+    session.close()
+    
+    assert reservation is not None
+    res_id = reservation.id
+    
+
+    response = client.put(f"/reservations/{res_id}/status", headers=headers, json = {
+            "status": "confirmed"
+        })
+    assert response.status_code == 200
+    mock_client.messages.create.assert_called_once()
+    
     
