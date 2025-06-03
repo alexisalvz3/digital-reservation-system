@@ -20,4 +20,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Execute tests
+        env:
+          DATABASE_URL: sqlite:///./dev.db
         run: pytest tests/test_api.py
