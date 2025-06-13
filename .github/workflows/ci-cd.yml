@@ -19,6 +19,8 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Initialize database
+        run: python scripts/init_db.py
       - name: Execute tests
         env:
           DATABASE_URL: sqlite:///./dev.db
