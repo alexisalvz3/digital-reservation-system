@@ -20,6 +20,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Initialize database
+        env:
+          DATABASE_URL: sqlite:///./dev.db
         run: python -m scripts.init_db
       - name: Execute tests
         env:
