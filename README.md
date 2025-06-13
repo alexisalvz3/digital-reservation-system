@@ -29,27 +29,6 @@ A cloud-native, containerized table reservation and notification system built fo
 
 ---
 
-## 📁 Project Structure
-
-digital-reservation-system/
-│
-├── app/
-│   ├── main.py          # FastAPI routes & entry point
-│   ├── models.py        # SQLAlchemy models
-│   ├── database.py      # DB session + engine
-│   └── sns.py           # SMS notification logic
-│
-├── tests/
-│   └── test_api.py      # Pytest suite for endpoints
-│
-├── scripts/             # Debugging & helper scripts
-├── Dockerfile           # Container definition
-├── docker-compose.yml   # Multi-service setup
-├── requirements.txt     # Python dependencies
-└── .env                 # (Ignored) Local env variables
-
-
----
 
 ## 🧪 Running Tests
 
